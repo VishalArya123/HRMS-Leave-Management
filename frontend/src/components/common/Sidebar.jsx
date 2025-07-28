@@ -20,7 +20,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0`}>
       <div className="flex flex-col h-full">
         <div className="p-6 flex items-center">
-          <img src="/src/assets/logo.png" alt="TensorGo" className="h-8 w-8 mr-2" />
+          <img src="https://imgs.search.brave.com/5juC3Ktu-Qo_leLX94SZ9odgBE3CnPNGJ4z4JnWwJTk/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9tYXJr/ZXRwbGFjZS5pbnRl/bC5jb20vZmlsZS1h/c3NldC9hNVEzYjAw/MDAwMGh5QTJFQUlf/YTVTM2IwMDAwMDA1/NHlCRUFR" alt="TensorGo" className="h-8 w-8 mr-2" />
           <span className="text-xl font-bold text-blue-700">HRMS</span>
         </div>
         <nav className="flex-1 space-y-1 px-2 pt-2">

@@ -11,7 +11,7 @@ const Header = ({ onMenuClick }) => {
         <button className="lg:hidden p-2 rounded-md hover:bg-gray-100" onClick={onMenuClick}>
           <Menu className="h-6 w-6 text-blue-600" />
         </button>
-        <img src="/src/assets/logo.png" alt="TensorGo" className="h-8 w-8" />
+        <img src="https://imgs.search.brave.com/5juC3Ktu-Qo_leLX94SZ9odgBE3CnPNGJ4z4JnWwJTk/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9tYXJr/ZXRwbGFjZS5pbnRl/bC5jb20vZmlsZS1h/c3NldC9hNVEzYjAw/MDAwMGh5QTJFQUlf/YTVTM2IwMDAwMDA1/NHlCRUFR" alt="TensorGo" className="h-8 w-8" />
         <span className="font-extrabold text-blue-700 text-xl">TensorGo HRMS</span>
       </div>
       <div className="flex items-center gap-4">

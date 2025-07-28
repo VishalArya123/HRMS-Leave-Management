@@ -51,7 +51,7 @@ const Login = () => {
       
       {/* Watermark Logo */}
       <div className="watermark-logo">
-        <img src="/src/assets/logo.png" alt="TensorGo" className="w-full h-full object-contain" />
+        <img src="https://imgs.search.brave.com/5juC3Ktu-Qo_leLX94SZ9odgBE3CnPNGJ4z4JnWwJTk/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9tYXJr/ZXRwbGFjZS5pbnRl/bC5jb20vZmlsZS1h/c3NldC9hNVEzYjAw/MDAwMGh5QTJFQUlf/YTVTM2IwMDAwMDA1/NHlCRUFR" alt="TensorGo" className="w-full h-full object-contain" />
       </div>
 
       <motion.div 
