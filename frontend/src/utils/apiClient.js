@@ -1,5 +1,5 @@
 // Enhanced API client with better error handling
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://hrms-leave-management.onrender.com';
 
 class APIClient {
   constructor() {
