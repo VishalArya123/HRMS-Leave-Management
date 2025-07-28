@@ -7,6 +7,9 @@
     "postinstall": "npm rebuild sqlite3 bcrypt --build-from-source",
     "start": "node app.js"
   },
+  "engines": {
+    "node": "18.x"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
