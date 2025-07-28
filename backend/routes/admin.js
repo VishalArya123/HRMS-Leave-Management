@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const getDb = require('../utils/db');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const { authMiddleware } = require('../utils/auth');
 const router = express.Router();
 
@@ -53,7 +53,7 @@ router.post('/employees', authMiddleware, adminOnly, async (req, res) => {
     }
     
     // Hash default password
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const hashedPassword = await bcryptjs.hash('password123', 10);
     
     // Insert new employee
     db.prepare(`

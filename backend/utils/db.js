@@ -1,6 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 
 const dbPath = path.join(__dirname, '../db/hrms.db');
 let dbConnection = null;
@@ -120,7 +120,7 @@ async function insertInitialData() {
   const insertEmployee = db.prepare('INSERT INTO employee (id, name, email, personal_email, password_hash, role, department, manager) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 
   for (const emp of employees) {
-    const hashedPassword = await bcrypt.hash(emp.password, 10);
+    const hashedPassword = await bcryptjs.hash(emp.password, 10);
     insertEmployee.run(emp.id, emp.name, emp.email, emp.personalEmail, hashedPassword, emp.role, emp.department, emp.manager);
   }
 

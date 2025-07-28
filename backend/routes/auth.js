@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const getDb = require('../utils/db');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const { generateToken } = require('../utils/auth');
 const router = express.Router();
 
@@ -43,7 +43,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
     
-    const match = await bcrypt.compare(password, user.password_hash);
+    const match = await bcryptjs.compare(password, user.password_hash);
     if (!match) {
       console.log('❌ Invalid password for:', email);
       return res.status(400).json({ error: 'Invalid email or password' });
