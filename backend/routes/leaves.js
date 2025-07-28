@@ -17,9 +17,9 @@ router.use(cors(corsOptions));
 
 // Test route
 router.get('/test', (req, res) => {
-  res.json({ 
-    message: 'Leave routes working', 
-    timestamp: new Date().toISOString() 
+  res.json({
+    message: 'Leave routes working',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -27,18 +27,18 @@ router.get('/test', (req, res) => {
 router.get('/', authMiddleware, async (req, res) => {
   try {
     console.log('📝 Getting leaves for user:', req.user.id);
-    
+
     const db = await getDb();
     const leaves = db.prepare('SELECT * FROM leave_request WHERE employee_id=? ORDER BY applied_date DESC').all(req.user.id);
-    
+
     console.log('✅ Found leaves:', leaves.length);
     res.json(leaves);
-    
+
   } catch (error) {
     console.error('❌ Get leaves error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch leaves', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to fetch leaves',
+      details: error.message
     });
   }
 });
@@ -47,18 +47,18 @@ router.get('/', authMiddleware, async (req, res) => {
 router.get('/approvals', authMiddleware, async (req, res) => {
   try {
     console.log('👔 Getting approvals for user:', req.user.id);
-    
+
     const db = await getDb();
     const approvals = db.prepare('SELECT * FROM leave_request WHERE approver=? AND status="pending" ORDER BY applied_date DESC').all(req.user.id);
-    
+
     console.log('✅ Found pending approvals:', approvals.length);
     res.json(approvals);
-    
+
   } catch (error) {
     console.error('❌ Get approvals error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch approvals', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to fetch approvals',
+      details: error.message
     });
   }
 });
@@ -68,13 +68,13 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     console.log('📝 Creating leave request for user:', req.user.id);
     console.log('📝 Request data:', req.body);
-    
+
     const { id, leaveType, startDate, endDate, days, reason, hasConflicts, conflictDetails } = req.body;
-    
+
     if (!id || !leaveType || !startDate || !endDate || !days || !reason) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const db = await getDb();
 
     // Find approver based on role
@@ -82,9 +82,9 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!emp) {
       return res.status(404).json({ error: 'Employee not found' });
     }
-    
+
     let approverId = null;
-    
+
     if (emp.role === 'employee') {
       approverId = emp.manager;
     } else if (emp.role === 'manager') {
@@ -100,10 +100,10 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Calculate LOP
     const balance = db.prepare('SELECT * FROM leave_balance WHERE employee_id=? AND leave_type=?').get(req.user.id, leaveType);
-    
+
     let lopDays = 0;
     let availableDays = 0;
-    
+
     if (balance) {
       availableDays = balance.allocated - balance.used - balance.pending;
       lopDays = Math.max(0, days - availableDays);
@@ -115,13 +115,13 @@ router.post('/', authMiddleware, async (req, res) => {
     const currentYear = new Date().getFullYear();
     const totalLopUsed = db.prepare(`
       SELECT SUM(lop_days) as total FROM leave_request 
-      WHERE employee_id=? AND status="approved" AND strftime('%Y', start_date)=?
+      WHERE employee_id=? AND status='approved' AND strftime('%Y', start_date)=?
     `).get(req.user.id, currentYear.toString());
-    
+
     const currentLop = totalLopUsed?.total || 0;
     if (currentLop + lopDays > MAX_LOP_PER_YEAR) {
-      return res.status(400).json({ 
-        error: `Would exceed annual LOP limit. Current: ${currentLop}, Limit: ${MAX_LOP_PER_YEAR}` 
+      return res.status(400).json({
+        error: `Would exceed annual LOP limit. Current: ${currentLop}, Limit: ${MAX_LOP_PER_YEAR}`
       });
     }
 
@@ -142,7 +142,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const newRequest = db.prepare('SELECT * FROM leave_request WHERE id=?').get(id);
     console.log('✅ Leave request created:', newRequest.id);
-    
+
     res.json({
       success: true,
       request: newRequest,
@@ -152,9 +152,9 @@ router.post('/', authMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Create leave request error:', error);
-    res.status(500).json({ 
-      error: 'Failed to create leave request', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to create leave request',
+      details: error.message
     });
   }
 });
@@ -163,22 +163,22 @@ router.post('/', authMiddleware, async (req, res) => {
 router.post('/:id/cancel', authMiddleware, async (req, res) => {
   try {
     console.log('❌ Cancelling leave request:', req.params.id);
-    
+
     const db = await getDb();
     const request = db.prepare('SELECT * FROM leave_request WHERE id=?').get(req.params.id);
-    
+
     if (!request) {
       return res.status(404).json({ error: 'Request not found' });
     }
-    
+
     if (request.employee_id !== req.user.id) {
       return res.status(403).json({ error: 'Can only cancel your own requests' });
     }
-    
+
     if (request.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending requests can be cancelled' });
     }
-    
+
     if (new Date(request.start_date) <= new Date()) {
       return res.status(400).json({ error: 'Cannot cancel after start date' });
     }
@@ -194,7 +194,7 @@ router.post('/:id/cancel', authMiddleware, async (req, res) => {
 
     const updatedRequest = db.prepare('SELECT * FROM leave_request WHERE id=?').get(req.params.id);
     console.log('✅ Leave request cancelled:', req.params.id);
-    
+
     res.json({
       success: true,
       request: updatedRequest
@@ -202,9 +202,9 @@ router.post('/:id/cancel', authMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Cancel leave request error:', error);
-    res.status(500).json({ 
-      error: 'Failed to cancel leave request', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to cancel leave request',
+      details: error.message
     });
   }
 });
@@ -213,50 +213,49 @@ router.post('/:id/cancel', authMiddleware, async (req, res) => {
 router.post('/:id/decision', authMiddleware, async (req, res) => {
   try {
     console.log('⚖️ Processing decision for leave:', req.params.id);
-    
+
     const { action, comments, rejectionReason } = req.body;
     const db = await getDb();
     const request = db.prepare('SELECT * FROM leave_request WHERE id=?').get(req.params.id);
-    
+
     if (!request) {
       return res.status(404).json({ error: 'Request not found' });
     }
-    
+
     if (request.approver !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to approve this request' });
     }
-    
+
     if (request.status !== 'pending') {
       return res.status(400).json({ error: 'Request is not pending' });
     }
 
     if (action === 'approve') {
-      db.prepare('UPDATE leave_request SET status="approved", comments=? WHERE id=?')
+      db.prepare('UPDATE leave_request SET status=\'approved\', comments=? WHERE id=?')
         .run(comments || `Approved by ${req.user.name}`, req.params.id);
-      
+
       // Update leave balance if not LOP
       if (!request.is_lop) {
         db.prepare('UPDATE leave_balance SET used=used+?, pending=pending-? WHERE employee_id=? AND leave_type=?')
           .run(request.days, request.days, request.employee_id, request.leave_type);
       }
-      
+
     } else if (action === 'reject') {
-      db.prepare('UPDATE leave_request SET status="rejected", comments=?, rejection_reason=? WHERE id=?')
-        .run(comments || `Rejected by ${req.user.name}`, rejectionReason || '', req.params.id);
-      
+      db.prepare('UPDATE leave_request SET status=\'rejected\', comments=?, rejection_reason=? WHERE id=?').run(comments || `Rejected by ${req.user.name}`, rejectionReason || '', req.params.id);
+
       // Remove from pending if not LOP
       if (!request.is_lop) {
         db.prepare('UPDATE leave_balance SET pending=pending-? WHERE employee_id=? AND leave_type=?')
           .run(request.days, request.employee_id, request.leave_type);
       }
-      
+
     } else {
       return res.status(400).json({ error: 'Invalid action. Use "approve" or "reject"' });
     }
 
     const updatedRequest = db.prepare('SELECT * FROM leave_request WHERE id=?').get(req.params.id);
     console.log(`✅ Leave request ${action}d:`, req.params.id);
-    
+
     res.json({
       success: true,
       action,
@@ -265,9 +264,9 @@ router.post('/:id/decision', authMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Decision processing error:', error);
-    res.status(500).json({ 
-      error: 'Failed to process decision', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to process decision',
+      details: error.message
     });
   }
 });

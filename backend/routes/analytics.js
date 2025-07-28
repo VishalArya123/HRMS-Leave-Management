@@ -23,7 +23,7 @@ router.get('/test', (req, res) => {
   });
 });
 
-// Get LOP analytics for current user
+// Get LOP analytics for current user - FIXED SQL QUERIES
 router.get('/lop', authMiddleware, async (req, res) => {
   try {
     console.log('📊 Getting LOP analytics for user:', req.user.id);
@@ -31,18 +31,18 @@ router.get('/lop', authMiddleware, async (req, res) => {
     const db = await getDb();
     const currentYear = new Date().getFullYear();
     
-    // Get total LOP days for current year
+    // Get total LOP days for current year - FIXED: Use single quotes
     const lopData = db.prepare(`
       SELECT SUM(lop_days) as totalLOP 
       FROM leave_request 
-      WHERE employee_id = ? AND status = "approved" AND strftime('%Y', start_date) = ?
+      WHERE employee_id = ? AND status = 'approved' AND strftime('%Y', start_date) = ?
     `).get(req.user.id, currentYear.toString());
 
-    // Get LOP breakdown by leave type
+    // Get LOP breakdown by leave type - FIXED: Use single quotes
     const lopBreakdown = db.prepare(`
       SELECT leave_type, SUM(lop_days) as lop_days 
       FROM leave_request 
-      WHERE employee_id = ? AND status = "approved" AND lop_days > 0 AND strftime('%Y', start_date) = ?
+      WHERE employee_id = ? AND status = 'approved' AND lop_days > 0 AND strftime('%Y', start_date) = ?
       GROUP BY leave_type
     `).all(req.user.id, currentYear.toString());
 
@@ -72,7 +72,7 @@ router.get('/lop', authMiddleware, async (req, res) => {
   }
 });
 
-// Get leave summary for current user
+// Get leave summary for current user - FIXED SQL QUERIES
 router.get('/summary', authMiddleware, async (req, res) => {
   try {
     console.log('📈 Getting leave summary for user:', req.user.id);
@@ -80,18 +80,18 @@ router.get('/summary', authMiddleware, async (req, res) => {
     const db = await getDb();
     const currentYear = new Date().getFullYear();
 
-    // Total leaves taken this year
+    // Total leaves taken this year - FIXED: Use single quotes
     const totalLeaves = db.prepare(`
       SELECT COUNT(*) as count, SUM(days) as totalDays
       FROM leave_request 
-      WHERE employee_id = ? AND status = "approved" AND strftime('%Y', start_date) = ?
+      WHERE employee_id = ? AND status = 'approved' AND strftime('%Y', start_date) = ?
     `).get(req.user.id, currentYear.toString());
 
-    // Pending leaves
+    // Pending leaves - FIXED: Use single quotes
     const pendingLeaves = db.prepare(`
       SELECT COUNT(*) as count 
       FROM leave_request 
-      WHERE employee_id = ? AND status = "pending"
+      WHERE employee_id = ? AND status = 'pending'
     `).get(req.user.id);
 
     // Leave balances
@@ -119,7 +119,7 @@ router.get('/summary', authMiddleware, async (req, res) => {
   }
 });
 
-// Get team analytics (for managers)
+// Get team analytics (for managers) - FIXED SQL QUERIES
 router.get('/team', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'manager' && req.user.role !== 'admin') {
@@ -139,7 +139,7 @@ router.get('/team', authMiddleware, async (req, res) => {
       params.push(req.user.id);
     }
 
-    // Team leave statistics
+    // Team leave statistics - FIXED: Use single quotes
     const teamStats = db.prepare(`
       SELECT 
         e.id, e.name, e.department,
