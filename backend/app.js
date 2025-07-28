@@ -4,13 +4,14 @@ const path = require('path');
 
 const app = express();
 
-// CORS and middleware setup (same as before)
+// Updated CORS origins to include frontend URL
 const corsOptions = {
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
     'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000'
+    'http://127.0.0.1:3000',
+    'https://hrms-leave-management-vishal.vercel.app'  // Added frontend URL
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -41,7 +42,7 @@ const employeeRoutes = require('./routes/employees');
 const leaveRoutes = require('./routes/leaves');
 const holidaysRoutes = require('./routes/holidays');
 const analyticsRoutes = require('./routes/analytics');
-const adminRoutes = require('./routes/admin'); // NEW ADMIN ROUTES
+const adminRoutes = require('./routes/admin');
 
 // Mount routes
 app.use('/auth', cors(corsOptions), authRoutes);
@@ -49,9 +50,9 @@ app.use('/employees', cors(corsOptions), employeeRoutes);
 app.use('/leaves', cors(corsOptions), leaveRoutes);
 app.use('/holidays', cors(corsOptions), holidaysRoutes);
 app.use('/analytics', cors(corsOptions), analyticsRoutes);
-app.use('/admin', cors(corsOptions), adminRoutes); // NEW ADMIN ROUTES
+app.use('/admin', cors(corsOptions), adminRoutes);
 
-// Root and health check routes (same as before)
+// Root and health check routes
 app.get('/', cors(corsOptions), (req, res) => {
   res.json({ 
     message: 'HRMS API Running Successfully! 🚀',
@@ -64,7 +65,7 @@ app.get('/', cors(corsOptions), (req, res) => {
       leaves: '/leaves',
       holidays: '/holidays',
       analytics: '/analytics',
-      admin: '/admin' // NEW
+      admin: '/admin'
     }
   });
 });
@@ -79,7 +80,7 @@ app.get('/health', cors(corsOptions), (req, res) => {
   });
 });
 
-// Error handlers (same as before)
+// Error handlers
 app.use((error, req, res, next) => {
   console.error('❌ Global error:', error);
   const origin = req.headers.origin;

@@ -7,13 +7,12 @@ const router = express.Router();
 
 // CORS options for auth routes
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'https://hrms-leave-management-vishal.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-// Apply CORS to all auth routes
 router.use(cors(corsOptions));
 
 // Test route
@@ -37,10 +36,7 @@ router.post('/login', async (req, res) => {
     }
     
     const db = await getDb();
-    const user = await db.get(
-      'SELECT * FROM employee WHERE email=? OR personal_email=?', 
-      email, email
-    );
+    const user = db.prepare('SELECT * FROM employee WHERE email=? OR personal_email=?').get(email, email);
     
     if (!user) {
       console.log('❌ User not found:', email);

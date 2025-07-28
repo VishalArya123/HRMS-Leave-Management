@@ -3,14 +3,15 @@ exports.validRoles = ['employee', 'manager', 'admin'];
 exports.validLeaveTypes = ['sick', 'casual', 'vacation', 'academic', 'wfh', 'compoff'];
 exports.MAX_LOP_PER_YEAR = 10;
 
-// CORS origins for all routes
+// CORS origins for all routes - UPDATED WITH FRONTEND URL
 exports.CORS_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000', 
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
   'http://localhost:5174',
-  'http://localhost:4173'
+  'http://localhost:4173',
+  'https://hrms-leave-management-vishal.vercel.app'  // Added frontend URL
 ];
 
 // Common CORS options

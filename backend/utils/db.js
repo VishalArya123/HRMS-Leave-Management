@@ -1,5 +1,4 @@
-const { open } = require('sqlite');
-const sqlite3 = require('sqlite3');
+const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcrypt');
 
@@ -9,10 +8,7 @@ let dbConnection = null;
 async function getDb() {
   if (!dbConnection) {
     try {
-      dbConnection = await open({ 
-        filename: dbPath, 
-        driver: sqlite3.Database 
-      });
+      dbConnection = new Database(dbPath);
       console.log('📁 Database connected successfully');
       await initializeDatabase();
     } catch (error) {
@@ -27,7 +23,7 @@ async function initializeDatabase() {
   const db = dbConnection;
   
   // Create tables if they don't exist
-  await db.exec(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS employee (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -104,7 +100,7 @@ async function insertInitialData() {
   const db = dbConnection;
   
   // Check if data already exists
-  const employeeCount = await db.get('SELECT COUNT(*) as count FROM employee');
+  const employeeCount = db.prepare('SELECT COUNT(*) as count FROM employee').get();
   if (employeeCount.count > 0) {
     console.log('📊 Database already has data, skipping initialization');
     return;
@@ -121,12 +117,11 @@ async function insertInitialData() {
     { id: 'TSG0019', name: 'Teja', email: 'teja@tensor.com', personalEmail: 'vishalaryadacha@gmail.com', password: 'password123', role: 'admin', department: 'HR', manager: null }
   ];
 
+  const insertEmployee = db.prepare('INSERT INTO employee (id, name, email, personal_email, password_hash, role, department, manager) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+
   for (const emp of employees) {
     const hashedPassword = await bcrypt.hash(emp.password, 10);
-    await db.run(
-      'INSERT INTO employee (id, name, email, personal_email, password_hash, role, department, manager) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      emp.id, emp.name, emp.email, emp.personalEmail, hashedPassword, emp.role, emp.department, emp.manager
-    );
+    insertEmployee.run(emp.id, emp.name, emp.email, emp.personalEmail, hashedPassword, emp.role, emp.department, emp.manager);
   }
 
   // Insert leave types
@@ -139,11 +134,10 @@ async function insertInitialData() {
     { id: 'compoff', name: 'Comp Off', code: 'CO', color: '#06b6d4', maxDays: 12, carryForward: false, documentation: false, description: 'For overtime' }
   ];
 
+  const insertLeaveType = db.prepare('INSERT INTO leave_type (id, name, code, color, max_days, carry_forward, documentation, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+
   for (const lt of leaveTypes) {
-    await db.run(
-      'INSERT INTO leave_type (id, name, code, color, max_days, carry_forward, documentation, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      lt.id, lt.name, lt.code, lt.color, lt.maxDays, lt.carryForward, lt.documentation, lt.description
-    );
+    insertLeaveType.run(lt.id, lt.name, lt.code, lt.color, lt.maxDays, lt.carryForward, lt.documentation, lt.description);
   }
 
   // Insert leave balances for all employees
@@ -184,11 +178,10 @@ async function insertInitialData() {
     { employeeId: 'TSG0019', leaveType: 'compoff', allocated: 12, used: 0, pending: 0 }
   ];
 
+  const insertBalance = db.prepare('INSERT INTO leave_balance (employee_id, leave_type, allocated, used, pending) VALUES (?, ?, ?, ?, ?)');
+
   for (const balance of balances) {
-    await db.run(
-      'INSERT INTO leave_balance (employee_id, leave_type, allocated, used, pending) VALUES (?, ?, ?, ?, ?)',
-      balance.employeeId, balance.leaveType, balance.allocated, balance.used, balance.pending
-    );
+    insertBalance.run(balance.employeeId, balance.leaveType, balance.allocated, balance.used, balance.pending);
   }
 
   // Insert holidays
@@ -204,11 +197,10 @@ async function insertInitialData() {
     { date: '2025-12-25', name: 'Christmas', type: 'festival' }
   ];
 
+  const insertHoliday = db.prepare('INSERT INTO holiday (date, name, type) VALUES (?, ?, ?)');
+
   for (const holiday of holidays) {
-    await db.run(
-      'INSERT INTO holiday (date, name, type) VALUES (?, ?, ?)',
-      holiday.date, holiday.name, holiday.type
-    );
+    insertHoliday.run(holiday.date, holiday.name, holiday.type);
   }
 
   // Insert initial notifications
@@ -218,11 +210,10 @@ async function insertInitialData() {
     { message: "📊 All leave balances have been set up", type: "update", priority: "low" }
   ];
 
+  const insertNotification = db.prepare('INSERT INTO notification (message, type, priority) VALUES (?, ?, ?)');
+
   for (const notif of notifications) {
-    await db.run(
-      'INSERT INTO notification (message, type, priority) VALUES (?, ?, ?)',
-      notif.message, notif.type, notif.priority
-    );
+    insertNotification.run(notif.message, notif.type, notif.priority);
   }
 
   console.log('✅ Initial data inserted successfully');
