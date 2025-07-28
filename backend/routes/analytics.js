@@ -7,7 +7,7 @@ const router = express.Router();
 
 // CORS options
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'https://hrms-leave-management-vishal.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -32,19 +32,19 @@ router.get('/lop', authMiddleware, async (req, res) => {
     const currentYear = new Date().getFullYear();
     
     // Get total LOP days for current year
-    const lopData = await db.get(`
+    const lopData = db.prepare(`
       SELECT SUM(lop_days) as totalLOP 
       FROM leave_request 
       WHERE employee_id = ? AND status = "approved" AND strftime('%Y', start_date) = ?
-    `, req.user.id, currentYear.toString());
+    `).get(req.user.id, currentYear.toString());
 
     // Get LOP breakdown by leave type
-    const lopBreakdown = await db.all(`
+    const lopBreakdown = db.prepare(`
       SELECT leave_type, SUM(lop_days) as lop_days 
       FROM leave_request 
       WHERE employee_id = ? AND status = "approved" AND lop_days > 0 AND strftime('%Y', start_date) = ?
       GROUP BY leave_type
-    `, req.user.id, currentYear.toString());
+    `).all(req.user.id, currentYear.toString());
 
     const totalLOPDays = lopData?.totalLOP || 0;
     const remainingLOPDays = Math.max(0, MAX_LOP_PER_YEAR - totalLOPDays);
@@ -81,23 +81,23 @@ router.get('/summary', authMiddleware, async (req, res) => {
     const currentYear = new Date().getFullYear();
 
     // Total leaves taken this year
-    const totalLeaves = await db.get(`
+    const totalLeaves = db.prepare(`
       SELECT COUNT(*) as count, SUM(days) as totalDays
       FROM leave_request 
       WHERE employee_id = ? AND status = "approved" AND strftime('%Y', start_date) = ?
-    `, req.user.id, currentYear.toString());
+    `).get(req.user.id, currentYear.toString());
 
     // Pending leaves
-    const pendingLeaves = await db.get(`
+    const pendingLeaves = db.prepare(`
       SELECT COUNT(*) as count 
       FROM leave_request 
       WHERE employee_id = ? AND status = "pending"
-    `, req.user.id);
+    `).get(req.user.id);
 
     // Leave balances
-    const balances = await db.all(`
+    const balances = db.prepare(`
       SELECT * FROM leave_balance WHERE employee_id = ?
-    `, req.user.id);
+    `).all(req.user.id);
 
     const result = {
       totalLeavesApproved: totalLeaves?.count || 0,
@@ -140,7 +140,7 @@ router.get('/team', authMiddleware, async (req, res) => {
     }
 
     // Team leave statistics
-    const teamStats = await db.all(`
+    const teamStats = db.prepare(`
       SELECT 
         e.id, e.name, e.department,
         COUNT(lr.id) as total_requests,
@@ -151,7 +151,7 @@ router.get('/team', authMiddleware, async (req, res) => {
       WHERE 1=1 ${teamCondition}
       GROUP BY e.id, e.name, e.department
       ORDER BY e.name
-    `, params);
+    `).all(...params);
 
     console.log('✅ Team analytics result:', teamStats.length, 'team members');
     res.json(teamStats);

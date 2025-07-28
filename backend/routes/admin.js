@@ -7,7 +7,7 @@ const router = express.Router();
 
 // CORS options
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'https://hrms-leave-management-vishal.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -27,7 +27,7 @@ const adminOnly = (req, res, next) => {
 router.get('/employees', authMiddleware, adminOnly, async (req, res) => {
   try {
     const db = await getDb();
-    const employees = await db.all('SELECT id, name, email, personal_email, role, department, manager FROM employee ORDER BY name');
+    const employees = db.prepare('SELECT id, name, email, personal_email, role, department, manager FROM employee ORDER BY name').all();
     res.json(employees);
   } catch (error) {
     console.error('❌ Get employees error:', error);
@@ -41,13 +41,13 @@ router.post('/employees', authMiddleware, adminOnly, async (req, res) => {
     const db = await getDb();
     
     // Check if employee ID already exists
-    const existingEmployee = await db.get('SELECT id FROM employee WHERE id = ?', id);
+    const existingEmployee = db.prepare('SELECT id FROM employee WHERE id = ?').get(id);
     if (existingEmployee) {
       return res.status(400).json({ error: 'Employee ID already exists' });
     }
     
     // Check if email already exists
-    const existingEmail = await db.get('SELECT id FROM employee WHERE email = ? OR personal_email = ?', email, email);
+    const existingEmail = db.prepare('SELECT id FROM employee WHERE email = ? OR personal_email = ?').get(email, email);
     if (existingEmail) {
       return res.status(400).json({ error: 'Email already exists' });
     }
@@ -56,21 +56,23 @@ router.post('/employees', authMiddleware, adminOnly, async (req, res) => {
     const hashedPassword = await bcrypt.hash('password123', 10);
     
     // Insert new employee
-    await db.run(`
+    db.prepare(`
       INSERT INTO employee (id, name, email, personal_email, password_hash, role, department, manager)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, id, name, email, personalEmail, hashedPassword, role, department, manager || null);
+    `).run(id, name, email, personalEmail, hashedPassword, role, department, manager || null);
     
     // Create leave balances for new employee
-    const leaveTypes = await db.all('SELECT * FROM leave_type');
+    const leaveTypes = db.prepare('SELECT * FROM leave_type').all();
+    const insertBalance = db.prepare(`
+      INSERT INTO leave_balance (employee_id, leave_type, allocated, used, pending)
+      VALUES (?, ?, ?, 0, 0)
+    `);
+    
     for (const leaveType of leaveTypes) {
-      await db.run(`
-        INSERT INTO leave_balance (employee_id, leave_type, allocated, used, pending)
-        VALUES (?, ?, ?, 0, 0)
-      `, id, leaveType.id, leaveType.max_days);
+      insertBalance.run(id, leaveType.id, leaveType.max_days);
     }
     
-    const newEmployee = await db.get('SELECT id, name, email, personal_email, role, department, manager FROM employee WHERE id = ?', id);
+    const newEmployee = db.prepare('SELECT id, name, email, personal_email, role, department, manager FROM employee WHERE id = ?').get(id);
     res.json(newEmployee);
     
   } catch (error) {
@@ -86,19 +88,19 @@ router.put('/employees/:id', authMiddleware, adminOnly, async (req, res) => {
     const db = await getDb();
     
     // Check if employee exists
-    const existingEmployee = await db.get('SELECT id FROM employee WHERE id = ?', id);
+    const existingEmployee = db.prepare('SELECT id FROM employee WHERE id = ?').get(id);
     if (!existingEmployee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
     
     // Update employee
-    await db.run(`
+    db.prepare(`
       UPDATE employee 
       SET name = ?, email = ?, personal_email = ?, role = ?, department = ?, manager = ?
       WHERE id = ?
-    `, name, email, personalEmail, role, department, manager || null, id);
+    `).run(name, email, personalEmail, role, department, manager || null, id);
     
-    const updatedEmployee = await db.get('SELECT id, name, email, personal_email, role, department, manager FROM employee WHERE id = ?', id);
+    const updatedEmployee = db.prepare('SELECT id, name, email, personal_email, role, department, manager FROM employee WHERE id = ?').get(id);
     res.json(updatedEmployee);
     
   } catch (error) {
@@ -118,18 +120,18 @@ router.delete('/employees/:id', authMiddleware, adminOnly, async (req, res) => {
     }
     
     // Check if employee exists
-    const employee = await db.get('SELECT id FROM employee WHERE id = ?', id);
+    const employee = db.prepare('SELECT id FROM employee WHERE id = ?').get(id);
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
     
     // Delete employee and related data
-    await db.run('DELETE FROM leave_balance WHERE employee_id = ?', id);
-    await db.run('DELETE FROM leave_request WHERE employee_id = ?', id);
-    await db.run('DELETE FROM employee WHERE id = ?', id);
+    db.prepare('DELETE FROM leave_balance WHERE employee_id = ?').run(id);
+    db.prepare('DELETE FROM leave_request WHERE employee_id = ?').run(id);
+    db.prepare('DELETE FROM employee WHERE id = ?').run(id);
     
     // Update manager references
-    await db.run('UPDATE employee SET manager = NULL WHERE manager = ?', id);
+    db.prepare('UPDATE employee SET manager = NULL WHERE manager = ?').run(id);
     
     res.json({ success: true, message: 'Employee deleted successfully' });
     
@@ -143,7 +145,7 @@ router.delete('/employees/:id', authMiddleware, adminOnly, async (req, res) => {
 router.get('/holidays', authMiddleware, adminOnly, async (req, res) => {
   try {
     const db = await getDb();
-    const holidays = await db.all('SELECT * FROM holiday ORDER BY date');
+    const holidays = db.prepare('SELECT * FROM holiday ORDER BY date').all();
     res.json(holidays);
   } catch (error) {
     console.error('❌ Get holidays error:', error);
@@ -157,14 +159,14 @@ router.post('/holidays', authMiddleware, adminOnly, async (req, res) => {
     const db = await getDb();
     
     // Check if holiday already exists for this date
-    const existingHoliday = await db.get('SELECT date FROM holiday WHERE date = ?', date);
+    const existingHoliday = db.prepare('SELECT date FROM holiday WHERE date = ?').get(date);
     if (existingHoliday) {
       return res.status(400).json({ error: 'Holiday already exists for this date' });
     }
     
-    await db.run('INSERT INTO holiday (date, name, type) VALUES (?, ?, ?)', date, name, type);
+    db.prepare('INSERT INTO holiday (date, name, type) VALUES (?, ?, ?)').run(date, name, type);
     
-    const newHoliday = await db.get('SELECT * FROM holiday WHERE date = ?', date);
+    const newHoliday = db.prepare('SELECT * FROM holiday WHERE date = ?').get(date);
     res.json(newHoliday);
     
   } catch (error) {
@@ -178,7 +180,7 @@ router.delete('/holidays/:date', authMiddleware, adminOnly, async (req, res) => 
     const { date } = req.params;
     const db = await getDb();
     
-    await db.run('DELETE FROM holiday WHERE date = ?', date);
+    db.prepare('DELETE FROM holiday WHERE date = ?').run(date);
     res.json({ success: true, message: 'Holiday deleted successfully' });
     
   } catch (error) {
@@ -191,7 +193,7 @@ router.delete('/holidays/:date', authMiddleware, adminOnly, async (req, res) => 
 router.get('/leave-balances', authMiddleware, adminOnly, async (req, res) => {
   try {
     const db = await getDb();
-    const balances = await db.all(`
+    const balances = db.prepare(`
       SELECT 
         lb.*,
         e.name as employee_name,
@@ -201,7 +203,7 @@ router.get('/leave-balances', authMiddleware, adminOnly, async (req, res) => {
       JOIN employee e ON lb.employee_id = e.id
       JOIN leave_type lt ON lb.leave_type = lt.id
       ORDER BY e.name, lt.name
-    `);
+    `).all();
     res.json(balances);
   } catch (error) {
     console.error('❌ Get leave balances error:', error);
@@ -215,27 +217,26 @@ router.put('/leave-balances', authMiddleware, adminOnly, async (req, res) => {
     const db = await getDb();
     
     // Check if balance entry exists
-    const existingBalance = await db.get(
-      'SELECT * FROM leave_balance WHERE employee_id = ? AND leave_type = ?',
-      employeeId, leaveType
-    );
+    const existingBalance = db.prepare(
+      'SELECT * FROM leave_balance WHERE employee_id = ? AND leave_type = ?'
+    ).get(employeeId, leaveType);
     
     if (existingBalance) {
       // Update existing balance
-      await db.run(`
+      db.prepare(`
         UPDATE leave_balance 
         SET allocated = ?, used = ?, pending = ?
         WHERE employee_id = ? AND leave_type = ?
-      `, allocated, used, pending, employeeId, leaveType);
+      `).run(allocated, used, pending, employeeId, leaveType);
     } else {
       // Create new balance entry
-      await db.run(`
+      db.prepare(`
         INSERT INTO leave_balance (employee_id, leave_type, allocated, used, pending)
         VALUES (?, ?, ?, ?, ?)
-      `, employeeId, leaveType, allocated, used, pending);
+      `).run(employeeId, leaveType, allocated, used, pending);
     }
     
-    const updatedBalance = await db.get(`
+    const updatedBalance = db.prepare(`
       SELECT 
         lb.*,
         e.name as employee_name,
@@ -244,7 +245,7 @@ router.put('/leave-balances', authMiddleware, adminOnly, async (req, res) => {
       JOIN employee e ON lb.employee_id = e.id
       JOIN leave_type lt ON lb.leave_type = lt.id
       WHERE lb.employee_id = ? AND lb.leave_type = ?
-    `, employeeId, leaveType);
+    `).get(employeeId, leaveType);
     
     res.json(updatedBalance);
     
@@ -261,33 +262,33 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
     const currentYear = new Date().getFullYear();
     
     // Get employee statistics
-    const employeeStats = await db.all(`
+    const employeeStats = db.prepare(`
       SELECT role, COUNT(*) as count 
       FROM employee 
       GROUP BY role
-    `);
+    `).all();
     
-    const departmentStats = await db.all(`
+    const departmentStats = db.prepare(`
       SELECT department, COUNT(*) as count 
       FROM employee 
       WHERE department IS NOT NULL
       GROUP BY department
-    `);
+    `).all();
     
     // Get leave request statistics
-    const leaveStats = await db.all(`
+    const leaveStats = db.prepare(`
       SELECT status, COUNT(*) as count 
       FROM leave_request 
       WHERE strftime('%Y', start_date) = ?
       GROUP BY status
-    `, currentYear.toString());
+    `).all(currentYear.toString());
     
     // Get holiday statistics
-    const holidayStats = await db.all(`
+    const holidayStats = db.prepare(`
       SELECT type, COUNT(*) as count 
       FROM holiday 
       GROUP BY type
-    `);
+    `).all();
     
     res.json({
       employees: {

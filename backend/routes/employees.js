@@ -6,7 +6,7 @@ const router = express.Router();
 
 // CORS options
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'https://hrms-leave-management-vishal.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -28,9 +28,7 @@ router.get('/', authMiddleware, async (req, res) => {
     console.log('👥 Getting all employees for user:', req.user.id);
     
     const db = await getDb();
-    const employees = await db.all(
-      'SELECT id, name, email, personal_email, role, department, manager FROM employee ORDER BY name'
-    );
+    const employees = db.prepare('SELECT id, name, email, personal_email, role, department, manager FROM employee ORDER BY name').all();
     
     console.log('✅ Found employees:', employees.length);
     res.json(employees);
@@ -50,10 +48,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     console.log('👤 Getting employee:', req.params.id);
     
     const db = await getDb();
-    const employee = await db.get(
-      'SELECT id, name, email, personal_email, role, department, manager FROM employee WHERE id = ?', 
-      req.params.id
-    );
+    const employee = db.prepare('SELECT id, name, email, personal_email, role, department, manager FROM employee WHERE id = ?').get(req.params.id);
     
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
@@ -77,10 +72,7 @@ router.get('/:id/balances', authMiddleware, async (req, res) => {
     console.log('📊 Getting leave balances for employee:', req.params.id);
     
     const db = await getDb();
-    const balances = await db.all(
-      'SELECT * FROM leave_balance WHERE employee_id = ?', 
-      req.params.id
-    );
+    const balances = db.prepare('SELECT * FROM leave_balance WHERE employee_id = ?').all(req.params.id);
     
     console.log('✅ Found balances:', balances.length);
     res.json(balances);
@@ -100,10 +92,7 @@ router.get('/team/:managerId', authMiddleware, async (req, res) => {
     console.log('👥 Getting team members for manager:', req.params.managerId);
     
     const db = await getDb();
-    const teamMembers = await db.all(
-      'SELECT id, name, email, personal_email, role, department FROM employee WHERE manager = ?', 
-      req.params.managerId
-    );
+    const teamMembers = db.prepare('SELECT id, name, email, personal_email, role, department FROM employee WHERE manager = ?').all(req.params.managerId);
     
     console.log('✅ Found team members:', teamMembers.length);
     res.json(teamMembers);
